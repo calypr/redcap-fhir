@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  fhir-api:
+    environment:
+      API_DEBUG: "true"
+      LOG_LEVEL: DEBUG
+    command: ["python", "app.py"]
+    volumes:
+      - ./src:/app
+      - ./logs:/app/logs
