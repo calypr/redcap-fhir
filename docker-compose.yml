@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  # MySQL Database Service
+  mysql:
+    image: mysql:8.0
+    container_name: redcap_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-redcap_root_pass}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-redcap}
+      MYSQL_USER: ${MYSQL_USER:-redcap}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-redcap_pass}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - redcap_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # REDCap Service
+  redcap:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: redcap_app
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-redcap}
+      MYSQL_USER: ${MYSQL_USER:-redcap}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-redcap_pass}
+    ports:
+      - "8080:80"
+      - "8443:443"
+    volumes:
+      - redcap_data:/var/www/redcap
+      - ./docker/apache.conf:/etc/apache2/sites-available/redcap.conf
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - redcap_network
+
+  # FHIR CRUD API Service
+  fhir-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: fhir_api
+    environment:
+      FHIR_BASE_URL: ${FHIR_BASE_URL:-https://google-fhir.fhir-aggregator.org/}
+      SCHEMA_BASE_URL: ${SCHEMA_BASE_URL:-https://hl7.org/fhir/R5}
+      MYSQL_HOST: mysql
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-redcap}
+      MYSQL_USER: ${MYSQL_USER:-redcap}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-redcap_pass}
+      API_DEBUG: ${API_DEBUG:-false}
+      API_PORT: 5000
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./src:/app/src
+      - ./logs:/app/logs
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - redcap_network
+
+volumes:
+  mysql_data:
+    driver: local
+  redcap_data:
+    driver: local
+
+networks:
+  redcap_network:
+    driver: bridge
