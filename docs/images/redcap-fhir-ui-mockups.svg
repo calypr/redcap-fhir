@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1160" viewBox="0 0 1400 1160" role="img" aria-labelledby="title desc">
+  <title id="title">REDCap FHIR UI mock screenshot set</title>
+  <desc id="desc">Illustrative REDCap forms and dashboards with FHIR mapped fields.</desc>
+  <rect width="1400" height="1160" fill="#f6f8fa"/>
+
+  <g font-family="Arial, Helvetica, sans-serif" fill="#24292f">
+    <text x="40" y="48" font-size="30" font-weight="700">REDCap + FHIR Integration UI Examples</text>
+    <text x="40" y="76" font-size="16">Illustrative screens for patient intake, observations, medications/allergies, conditions, dashboard, and validation errors.</text>
+  </g>
+
+  <g>
+    <rect x="40" y="100" width="640" height="310" rx="8" fill="#ffffff" stroke="#d0d7de"/>
+    <rect x="40" y="100" width="640" height="38" rx="8" fill="#0969da"/>
+    <text x="58" y="125" fill="#ffffff" font-family="Arial" font-size="16" font-weight="700">1) Patient Intake Form (FHIR Patient)</text>
+    <text x="58" y="170" font-family="monospace" font-size="15">MRN (Patient.identifier):      MRN-10355</text>
+    <text x="58" y="200" font-family="monospace" font-size="15">Family Name (Patient.name):    Hernandez</text>
+    <text x="58" y="230" font-family="monospace" font-size="15">Given Name (Patient.name):     Maria</text>
+    <text x="58" y="260" font-family="monospace" font-size="15">Birth Date (Patient.birthDate):1984-07-22</text>
+    <text x="58" y="290" font-family="monospace" font-size="15">Gender (Patient.gender):       female</text>
+    <text x="58" y="320" font-family="monospace" font-size="15">Phone (Patient.telecom):       +1-312-555-0188</text>
+  </g>
+
+  <g>
+    <rect x="720" y="100" width="640" height="310" rx="8" fill="#ffffff" stroke="#d0d7de"/>
+    <rect x="720" y="100" width="640" height="38" rx="8" fill="#1a7f37"/>
+    <text x="738" y="125" fill="#ffffff" font-family="Arial" font-size="16" font-weight="700">2) Observation Form (FHIR Observation)</text>
+    <text x="738" y="170" font-family="monospace" font-size="15">LOINC Code:      8480-6 (Systolic blood pressure)</text>
+    <text x="738" y="200" font-family="monospace" font-size="15">Value Quantity:  126 mm[Hg]</text>
+    <text x="738" y="230" font-family="monospace" font-size="15">Effective Date:  2026-06-03T15:22:00Z</text>
+    <text x="738" y="260" font-family="monospace" font-size="15">Status:          final</text>
+    <text x="738" y="290" font-family="monospace" font-size="15">Subject Ref:     Patient/MRN-10355</text>
+    <text x="738" y="320" font-family="monospace" font-size="15">Source:          fhir-aggregator.org</text>
+  </g>
+
+  <g>
+    <rect x="40" y="440" width="640" height="310" rx="8" fill="#ffffff" stroke="#d0d7de"/>
+    <rect x="40" y="440" width="640" height="38" rx="8" fill="#8250df"/>
+    <text x="58" y="465" fill="#ffffff" font-family="Arial" font-size="16" font-weight="700">3) Medication + Allergy Form</text>
+    <text x="58" y="510" font-family="monospace" font-size="15">Medication (MedicationStatement.medicationCodeableConcept)</text>
+    <text x="58" y="536" font-family="monospace" font-size="15">  - Metformin 500 MG Oral Tablet</text>
+    <text x="58" y="566" font-family="monospace" font-size="15">Allergy (AllergyIntolerance.code): Penicillin</text>
+    <text x="58" y="596" font-family="monospace" font-size="15">Reaction (AllergyIntolerance.reaction): Rash</text>
+    <text x="58" y="626" font-family="monospace" font-size="15">Criticality: high</text>
+    <text x="58" y="656" font-family="monospace" font-size="15">Verification Status: confirmed</text>
+  </g>
+
+  <g>
+    <rect x="720" y="440" width="640" height="310" rx="8" fill="#ffffff" stroke="#d0d7de"/>
+    <rect x="720" y="440" width="640" height="38" rx="8" fill="#bf8700"/>
+    <text x="738" y="465" fill="#ffffff" font-family="Arial" font-size="16" font-weight="700">4) Conditions / Diagnoses Form</text>
+    <text x="738" y="510" font-family="monospace" font-size="15">Condition.code: E11.9 (Type 2 diabetes mellitus)</text>
+    <text x="738" y="540" font-family="monospace" font-size="15">Clinical Status: active</text>
+    <text x="738" y="570" font-family="monospace" font-size="15">Verification: confirmed</text>
+    <text x="738" y="600" font-family="monospace" font-size="15">Onset Date: 2021-02-12</text>
+    <text x="738" y="630" font-family="monospace" font-size="15">Recorded Date: 2026-06-03</text>
+  </g>
+
+  <g>
+    <rect x="40" y="780" width="640" height="320" rx="8" fill="#ffffff" stroke="#d0d7de"/>
+    <rect x="40" y="780" width="640" height="38" rx="8" fill="#0550ae"/>
+    <text x="58" y="805" fill="#ffffff" font-family="Arial" font-size="16" font-weight="700">5) Patient Dashboard View</text>
+    <text x="58" y="850" font-family="monospace" font-size="15">Patient: Maria Hernandez (MRN-10355)</text>
+    <text x="58" y="880" font-family="monospace" font-size="15">Last Sync: 2026-06-03 15:24 UTC</text>
+    <text x="58" y="910" font-family="monospace" font-size="15">Observations synced: 18</text>
+    <text x="58" y="940" font-family="monospace" font-size="15">Active medications: 4</text>
+    <text x="58" y="970" font-family="monospace" font-size="15">Active conditions: 3</text>
+    <text x="58" y="1000" font-family="monospace" font-size="15">Allergies flagged: 1 (high criticality)</text>
+    <text x="58" y="1030" font-family="monospace" font-size="15">Sync Status: OK</text>
+  </g>
+
+  <g>
+    <rect x="720" y="780" width="640" height="320" rx="8" fill="#ffffff" stroke="#d0d7de"/>
+    <rect x="720" y="780" width="640" height="38" rx="8" fill="#cf222e"/>
+    <text x="738" y="805" fill="#ffffff" font-family="Arial" font-size="16" font-weight="700">6) Validation and Error Handling</text>
+    <text x="738" y="850" font-family="monospace" font-size="15">Resource: Observation/obs-991</text>
+    <text x="738" y="880" font-family="monospace" font-size="15">Error: valueQuantity.unit missing</text>
+    <text x="738" y="910" font-family="monospace" font-size="15">Action: Record saved as pending review</text>
+    <text x="738" y="940" font-family="monospace" font-size="15">UI banner: "FHIR sync warning — incomplete unit"</text>
+    <text x="738" y="970" font-family="monospace" font-size="15">Recommended fix: update source at aggregator</text>
+    <text x="738" y="1000" font-family="monospace" font-size="15">Retry sync button: available</text>
+  </g>
+</svg>
