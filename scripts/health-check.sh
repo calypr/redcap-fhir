@@ -5,7 +5,10 @@ API_URL="${API_URL:-http://localhost:5000/health}"
 TIMEOUT_SECONDS="${TIMEOUT_SECONDS:-20}"
 
 if command -v curl >/dev/null 2>&1; then
-  RESPONSE="$(curl -fsS --max-time "${TIMEOUT_SECONDS}" "${API_URL}")"
+  if ! RESPONSE="$(curl -sS --max-time "${TIMEOUT_SECONDS}" "${API_URL}")"; then
+    echo "FHIR API health check request failed: ${API_URL}" >&2
+    exit 1
+  fi
 else
   echo "curl is required for health checks" >&2
   exit 1

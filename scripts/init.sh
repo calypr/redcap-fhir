@@ -7,8 +7,8 @@ if ! command -v docker-compose >/dev/null 2>&1; then
 fi
 
 echo "Initializing REDCap database schema..."
-${COMPOSE_CMD} exec -T mysql mysql \
-  -u root -p"${MYSQL_ROOT_PASSWORD:-redcap_root_pass}" \
-  "${MYSQL_DATABASE:-redcap}" < scripts/init.sql
+MYSQL_PWD="${MYSQL_ROOT_PASSWORD:-redcap_root_pass}" \
+  ${COMPOSE_CMD} exec -T mysql mysql \
+  -u root "${MYSQL_DATABASE:-redcap}" < scripts/init.sql
 
 echo "Database initialization complete."

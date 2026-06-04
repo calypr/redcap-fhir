@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 COMPOSE_CMD="docker-compose"
 if ! command -v docker-compose >/dev/null 2>&1; then
@@ -13,6 +14,6 @@ echo "Starting core services..."
 ${COMPOSE_CMD} up -d mysql fhir-api
 
 echo "Re-initializing schema..."
-./scripts/init.sh
+"${SCRIPT_DIR}/init.sh"
 
 echo "Database reset complete."
