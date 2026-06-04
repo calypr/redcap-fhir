@@ -45,17 +45,25 @@ docker-compose up -d
 redcap-fhir/
 ├── Dockerfile              # REDCap container configuration
 ├── docker-compose.yml      # Multi-service orchestration
+├── docker-compose.dev.yml  # Development-mode overrides
 ├── .env.example            # Environment configuration template
 ├── .gitignore              # Git ignore rules
 ├── README.md               # This file
+├── API.md                  # API usage and endpoint reference
+├── CONTRIBUTING.md         # Developer contribution guide
+├── TROUBLESHOOTING.md      # Common issues and fixes
 ├── src/                    # Application source code
 │   ├── app.py             # Main FHIR CRUD API
 │   ├── fhir_client.py     # FHIR client for data operations
 │   ├── requirements.txt    # Python dependencies
 │   └── config.py          # Configuration management
 ├── scripts/               # Utility scripts
-│   ├── init.sh            # Database initialization
-│   └── setup.sh           # Setup script
+│   ├── setup.sh           # Initial setup script
+│   ├── init.sh            # Database initialization helper
+│   ├── health-check.sh    # Service health verification
+│   ├── reset-db.sh        # Database reset helper
+│   ├── collect-logs.sh    # Log aggregation helper
+│   └── cleanup.sh         # Resource cleanup helper
 └── data/                  # Data persistence volume
 ```
 
@@ -149,25 +157,11 @@ docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
 
 ## Troubleshooting
 
-### REDCap not starting
-- Check database connectivity
-- Verify MySQL is running: `docker-compose logs mysql`
-- Check REDCap logs: `docker-compose logs redcap`
-
-### FHIR API errors
-- Verify FHIR_BASE_URL is accessible
-- Check API logs: `docker-compose logs fhir-api`
-- Validate FHIR resource JSON format
-
-### Database issues
-- Reset database: `docker-compose down -v && docker-compose up`
-- Check disk space: `docker exec mysql df -h`
+See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for common issues and solutions.
 
 ## Contributing
 
-1. Create a feature branch
-2. Make your changes
-3. Submit a pull request
+See [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## License
 
