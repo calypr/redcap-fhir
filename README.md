@@ -50,8 +50,10 @@ redcap-fhir/
 ├── .gitignore              # Git ignore rules
 ├── README.md               # This file
 ├── API.md                  # API usage and endpoint reference
+├── SCREENSHOTS.md          # REDCap UI screenshots and visual guide
 ├── CONTRIBUTING.md         # Developer contribution guide
 ├── TROUBLESHOOTING.md      # Common issues and fixes
+├── docs/images/            # Visual mock screenshots and diagrams
 ├── src/                    # Application source code
 │   ├── app.py             # Main FHIR CRUD API
 │   ├── fhir_client.py     # FHIR client for data operations
@@ -158,6 +160,10 @@ docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
 ## Troubleshooting
 
 See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for common issues and solutions.
+
+## Visual REDCap Guide
+
+See [SCREENSHOTS.md](./SCREENSHOTS.md) for REDCap UI screenshot examples, workflow diagrams, and FHIR mapping references.
 
 ## Contributing
 
