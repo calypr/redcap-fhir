@@ -4,6 +4,7 @@ from flask import Flask, request, jsonify
 from functools import wraps
 from config import Config
 from fhir_client import FHIRClient
+from cdis_connector import CDISConnector
 import mysql.connector
 from mysql.connector import Error
 
@@ -24,6 +25,7 @@ app.config['JSON_SORT_KEYS'] = False
 
 # Initialize FHIR Client
 fhir_client = FHIRClient()
+cdis_connector = CDISConnector(fhir_client)
 
 # Database connection pool
 def get_db_connection():
@@ -40,6 +42,215 @@ def get_db_connection():
     except Error as e:
         logger.error(f"Database connection error: {str(e)}")
         return None
+
+
+def ensure_cdis_tables(connection):
+    """Create CDIS persistence tables if they do not exist."""
+    cursor = connection.cursor()
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS cdis_jobs (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            job_type VARCHAR(20) NOT NULL,
+            status VARCHAR(20) NOT NULL,
+            requested_by VARCHAR(255),
+            payload LONGTEXT,
+            result LONGTEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_cdis_jobs_type (job_type),
+            INDEX idx_cdis_jobs_status (status),
+            INDEX idx_cdis_jobs_created (created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """
+    )
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS cdis_adjudications (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            job_id INT,
+            patient_id VARCHAR(255) NOT NULL,
+            redcap_field VARCHAR(255) NOT NULL,
+            resource_type VARCHAR(50),
+            resource_id VARCHAR(255),
+            proposed_value LONGTEXT,
+            selected_value LONGTEXT,
+            status VARCHAR(20) NOT NULL DEFAULT 'pending',
+            adjudicated_by VARCHAR(255),
+            adjudicated_at TIMESTAMP NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_cdis_adj_job (job_id),
+            INDEX idx_cdis_adj_patient (patient_id),
+            INDEX idx_cdis_adj_status (status),
+            CONSTRAINT fk_cdis_adj_job FOREIGN KEY (job_id) REFERENCES cdis_jobs(id) ON DELETE SET NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """
+    )
+    cursor.close()
+
+
+def create_cdis_job(job_type, payload):
+    connection = get_db_connection()
+    if not connection:
+        return None
+
+    cursor = None
+    try:
+        ensure_cdis_tables(connection)
+        cursor = connection.cursor()
+        requested_by = request.headers.get('X-CDIS-User', request.remote_addr)
+        cursor.execute(
+            "INSERT INTO cdis_jobs (job_type, status, requested_by, payload) VALUES (%s, %s, %s, %s)",
+            (job_type, 'running', requested_by, json.dumps(payload))
+        )
+        connection.commit()
+        return cursor.lastrowid
+    except Error as e:
+        logger.error(f"Unable to create CDIS job: {str(e)}")
+        return None
+    finally:
+        if cursor:
+            cursor.close()
+        connection.close()
+
+
+def update_cdis_job(job_id, status, result):
+    if not job_id:
+        return
+
+    connection = get_db_connection()
+    if not connection:
+        return
+
+    cursor = None
+    try:
+        ensure_cdis_tables(connection)
+        cursor = connection.cursor()
+        cursor.execute(
+            "UPDATE cdis_jobs SET status = %s, result = %s WHERE id = %s",
+            (status, json.dumps(result), job_id)
+        )
+        connection.commit()
+    except Error as e:
+        logger.error(f"Unable to update CDIS job {job_id}: {str(e)}")
+    finally:
+        if cursor:
+            cursor.close()
+        connection.close()
+
+
+def persist_adjudication_candidates(job_id, patient_id, pull_result):
+    connection = get_db_connection()
+    if not connection:
+        return
+
+    cursor = None
+    try:
+        ensure_cdis_tables(connection)
+        cursor = connection.cursor()
+        for item in pull_result.get('results', []):
+            values = item.get('values', [])
+            resource_ids = item.get('resource_ids', [])
+            proposed_value = values[0] if values else None
+            resource_id = resource_ids[0] if resource_ids else None
+
+            cursor.execute(
+                """
+                INSERT INTO cdis_adjudications (
+                    job_id, patient_id, redcap_field, resource_type, resource_id, proposed_value, status
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    job_id,
+                    patient_id,
+                    item.get('redcap_field', ''),
+                    item.get('resource_type'),
+                    resource_id,
+                    None if proposed_value is None else json.dumps(proposed_value),
+                    'pending',
+                )
+            )
+
+        connection.commit()
+    except Error as e:
+        logger.error(f"Unable to persist adjudication candidates: {str(e)}")
+    finally:
+        if cursor:
+            cursor.close()
+        connection.close()
+
+
+def fetch_adjudications(status=None, patient_id=None, job_id=None):
+    connection = get_db_connection()
+    if not connection:
+        return []
+
+    cursor = None
+    try:
+        ensure_cdis_tables(connection)
+        cursor = connection.cursor(dictionary=True)
+        sql = "SELECT * FROM cdis_adjudications WHERE 1=1"
+        params = []
+
+        if status:
+            sql += " AND status = %s"
+            params.append(status)
+        if patient_id:
+            sql += " AND patient_id = %s"
+            params.append(patient_id)
+        if job_id:
+            sql += " AND job_id = %s"
+            params.append(job_id)
+
+        sql += " ORDER BY created_at DESC"
+        cursor.execute(sql, tuple(params))
+        return cursor.fetchall()
+    except Error as e:
+        logger.error(f"Unable to fetch adjudications: {str(e)}")
+        return []
+    finally:
+        if cursor:
+            cursor.close()
+        connection.close()
+
+
+def update_adjudication_status(adjudication_id, status, selected_value=None):
+    connection = get_db_connection()
+    if not connection:
+        return False
+
+    cursor = None
+    try:
+        ensure_cdis_tables(connection)
+        cursor = connection.cursor()
+        adjudicated_by = request.headers.get('X-CDIS-User', request.remote_addr)
+
+        cursor.execute(
+            """
+            UPDATE cdis_adjudications
+            SET status = %s,
+                selected_value = %s,
+                adjudicated_by = %s,
+                adjudicated_at = CURRENT_TIMESTAMP
+            WHERE id = %s
+            """,
+            (
+                status,
+                None if selected_value is None else json.dumps(selected_value),
+                adjudicated_by,
+                adjudication_id,
+            )
+        )
+        connection.commit()
+        return cursor.rowcount > 0
+    except Error as e:
+        logger.error(f"Unable to update adjudication {adjudication_id}: {str(e)}")
+        return False
+    finally:
+        if cursor:
+            cursor.close()
+        connection.close()
 
 # Error handler decorator
 def handle_errors(f):
@@ -293,6 +504,153 @@ def get_supported_resources():
         'supported_resources': Config.SUPPORTED_RESOURCES,
         'count': len(Config.SUPPORTED_RESOURCES)
     }), 200
+
+
+# CDIS endpoints
+@app.route('/cdis/fields', methods=['GET'])
+@handle_errors
+def cdis_fields():
+    """Search available EHR/FHIR field catalog entries for mapping."""
+    query = request.args.get('query', '')
+    fields = cdis_connector.search_field_catalog(query)
+    return jsonify({
+        'query': query,
+        'count': len(fields),
+        'fields': fields,
+    }), 200
+
+
+@app.route('/cdis/mapping-helper', methods=['GET'])
+@handle_errors
+def cdis_mapping_helper():
+    """Return field mapping suggestions and sample values for a patient."""
+    patient_id = request.args.get('patient_id', '').strip()
+    if not patient_id:
+        return jsonify({'error': 'patient_id is required'}), 400
+
+    resource_type = request.args.get('resource_type', '').strip() or None
+    field_query = request.args.get('field_query', '').strip()
+    limit = request.args.get('limit', 25, type=int)
+
+    result = cdis_connector.mapping_helper(
+        patient_id=patient_id,
+        resource_type=resource_type,
+        field_query=field_query,
+        limit=limit,
+    )
+    return jsonify(result), 200
+
+
+@app.route('/cdis/cdp/pull', methods=['POST'])
+@handle_errors
+def cdis_clinical_data_pull():
+    """CDP workflow: pull mapped values for one patient and return adjudication candidates."""
+    payload = request.get_json() or {}
+
+    patient_id = str(payload.get('patient_id', '')).strip()
+    mappings = payload.get('mappings', [])
+    start_date = payload.get('start_date')
+    end_date = payload.get('end_date')
+
+    if not patient_id:
+        return jsonify({'error': 'patient_id is required'}), 400
+    if not isinstance(mappings, list) or not mappings:
+        return jsonify({'error': 'mappings must be a non-empty list'}), 400
+
+    job_id = create_cdis_job('CDP', payload)
+
+    result = cdis_connector.clinical_data_pull(
+        patient_id=patient_id,
+        mappings=mappings,
+        start_date=start_date,
+        end_date=end_date,
+    )
+    result['job_id'] = job_id
+
+    persist_adjudication_candidates(job_id, patient_id, result)
+    update_cdis_job(job_id, 'completed', result)
+    return jsonify(result), 200
+
+
+@app.route('/cdis/cdm/extract', methods=['POST'])
+@handle_errors
+def cdis_clinical_data_mart():
+    """CDM workflow: extract longitudinal resources for a patient cohort."""
+    payload = request.get_json() or {}
+
+    patient_ids = payload.get('patient_ids', [])
+    resource_types = payload.get('resource_types', Config.SUPPORTED_RESOURCES)
+    start_date = payload.get('start_date')
+    end_date = payload.get('end_date')
+
+    if not isinstance(patient_ids, list) or not patient_ids:
+        return jsonify({'error': 'patient_ids must be a non-empty list'}), 400
+
+    if not isinstance(resource_types, list) or not resource_types:
+        return jsonify({'error': 'resource_types must be a non-empty list'}), 400
+
+    job_id = create_cdis_job('CDM', payload)
+
+    result = cdis_connector.clinical_data_mart(
+        patient_ids=[str(pid).strip() for pid in patient_ids if str(pid).strip()],
+        resource_types=[rt for rt in resource_types if rt in Config.SUPPORTED_RESOURCES],
+        start_date=start_date,
+        end_date=end_date,
+    )
+    result['job_id'] = job_id
+
+    update_cdis_job(job_id, 'completed', result)
+    return jsonify(result), 200
+
+
+@app.route('/cdis/adjudications', methods=['GET'])
+@handle_errors
+def cdis_list_adjudications():
+    """List CDIS adjudication items with optional filters."""
+    status = request.args.get('status', '').strip() or None
+    patient_id = request.args.get('patient_id', '').strip() or None
+    job_id = request.args.get('job_id', type=int)
+
+    items = fetch_adjudications(status=status, patient_id=patient_id, job_id=job_id)
+    return jsonify({
+        'count': len(items),
+        'items': items,
+    }), 200
+
+
+@app.route('/cdis/adjudications/<int:adjudication_id>/accept', methods=['POST'])
+@handle_errors
+def cdis_accept_adjudication(adjudication_id):
+    """Accept an adjudication item and optionally override selected value."""
+    payload = request.get_json(silent=True) or {}
+    selected_value = payload.get('selected_value')
+
+    updated = update_adjudication_status(
+        adjudication_id=adjudication_id,
+        status='accepted',
+        selected_value=selected_value,
+    )
+
+    if not updated:
+        return jsonify({'error': 'Adjudication not found'}), 404
+
+    return jsonify({'message': 'Adjudication accepted', 'id': adjudication_id}), 200
+
+
+@app.route('/cdis/adjudications/<int:adjudication_id>/reject', methods=['POST'])
+@handle_errors
+def cdis_reject_adjudication(adjudication_id):
+    """Reject an adjudication item."""
+    updated = update_adjudication_status(
+        adjudication_id=adjudication_id,
+        status='rejected',
+        selected_value=None,
+    )
+
+    if not updated:
+        return jsonify({'error': 'Adjudication not found'}), 404
+
+    return jsonify({'message': 'Adjudication rejected', 'id': adjudication_id}), 200
 
 # Error handlers
 @app.errorhandler(404)

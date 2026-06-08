@@ -1,14 +1,20 @@
 FROM ubuntu:22.04
 
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Etc/UTC
+
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
+    && echo $TZ > /etc/timezone \
+    && apt-get update && apt-get install -y --no-install-recommends \
+    tzdata \
     apache2 \
     php \
     php-mysql \
     php-curl \
     php-json \
     php-mbstring \
-    mysql-client \
+    default-mysql-client \
     curl \
     wget \
     git \

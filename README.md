@@ -39,6 +39,10 @@ docker-compose up -d
 - REDCap: http://localhost:8080
 - FHIR API: http://localhost:5000
 
+Important: This repository does not include REDCap application source code. Add your licensed REDCap files to the local `redcap/` directory (at minimum, REDCap `index.php`) so Apache can serve the app.
+
+The default `redcap/index.php` included in this repo acts as a lightweight FHIR workspace. It connects server-side to the internal `fhir-api` service, lets you browse supported resource types, inspect returned payloads, and submit generated CRUD forms for those resources.
+
 ## Project Structure
 
 ```
@@ -124,7 +128,8 @@ curl -X DELETE http://localhost:5000/fhir/resources/{resourceType}/{id}
 ### REDCap Container
 - Main electronic data capture platform
 - Port: 8080
-- Persistent volume: `redcap_data`
+- Local bind mount: `./redcap:/var/www/redcap`
+- Internal FHIR bridge: `FHIR_API_URL=http://fhir-api:5000`
 
 ### MySQL Database
 - Data persistence layer

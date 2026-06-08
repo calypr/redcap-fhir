@@ -12,6 +12,7 @@ class Config:
     # FHIR Configuration
     FHIR_BASE_URL = os.getenv('FHIR_BASE_URL', 'https://google-fhir.fhir-aggregator.org/')
     SCHEMA_BASE_URL = os.getenv('SCHEMA_BASE_URL', 'https://hl7.org/fhir/R5')
+    FHIR_ACCESS_TOKEN = os.getenv('FHIR_ACCESS_TOKEN', '')
     
     # Database Configuration
     MYSQL_HOST = os.getenv('MYSQL_HOST', 'localhost')
@@ -35,5 +36,8 @@ class Config:
         'DiagnosticReport',
         'Encounter',
         'Immunization',
-        'MedicationRequest'
+        'MedicationRequest',
+        'ResearchStudy',
+        'ResearchSubject',
+        'Sample'
     ]

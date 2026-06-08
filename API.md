@@ -211,3 +211,110 @@ The API returns JSON errors.
   "error": "Internal server error"
 }
 ```
+
+## CDIS connector endpoints
+
+These endpoints implement CDIS-style workflows for field discovery, mapping assistance, clinical data pull (CDP), and clinical data mart extraction (CDM).
+
+### Field catalog
+
+`GET /cdis/fields?query={text}`
+
+Example:
+
+```bash
+curl "http://localhost:5000/cdis/fields?query=glucose"
+```
+
+### Mapping helper
+
+`GET /cdis/mapping-helper?patient_id={id}&resource_type={type}&field_query={text}&limit={n}`
+
+Example:
+
+```bash
+curl "http://localhost:5000/cdis/mapping-helper?patient_id=123&resource_type=Observation&field_query=value"
+```
+
+### Clinical Data Pull (CDP)
+
+`POST /cdis/cdp/pull`
+
+Example:
+
+```bash
+curl -X POST http://localhost:5000/cdis/cdp/pull \
+  -H "Content-Type: application/json" \
+  -d '{
+    "patient_id": "123",
+    "start_date": "2025-01-01",
+    "end_date": "2025-12-31",
+    "mappings": [
+      {
+        "redcap_field": "patient_last_name",
+        "resource_type": "Patient",
+        "fhir_path": "name.0.family",
+        "strategy": "latest"
+      },
+      {
+        "redcap_field": "latest_observation",
+        "resource_type": "Observation",
+        "fhir_path": "valueString",
+        "strategy": "latest"
+      }
+    ]
+  }'
+```
+
+### Clinical Data Mart (CDM)
+
+`POST /cdis/cdm/extract`
+
+Example:
+
+```bash
+curl -X POST http://localhost:5000/cdis/cdm/extract \
+  -H "Content-Type: application/json" \
+  -d '{
+    "patient_ids": ["123", "456"],
+    "resource_types": ["Patient", "Observation", "Condition"],
+    "start_date": "2025-01-01",
+    "end_date": "2025-12-31"
+  }'
+```
+
+## CDIS persistence and adjudication
+
+CDP and CDM requests now create a persisted job record and return `job_id` in responses.
+
+### List adjudication items
+
+`GET /cdis/adjudications?status={pending|accepted|rejected}&patient_id={id}&job_id={id}`
+
+Example:
+
+```bash
+curl "http://localhost:5000/cdis/adjudications?status=pending"
+```
+
+### Accept adjudication
+
+`POST /cdis/adjudications/{id}/accept`
+
+Example:
+
+```bash
+curl -X POST http://localhost:5000/cdis/adjudications/1/accept \
+  -H "Content-Type: application/json" \
+  -d '{"selected_value": "override-value"}'
+```
+
+### Reject adjudication
+
+`POST /cdis/adjudications/{id}/reject`
+
+Example:
+
+```bash
+curl -X POST http://localhost:5000/cdis/adjudications/1/reject
+```

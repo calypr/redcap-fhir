@@ -1,0 +1,685 @@
+                                                               Journal of Biomedical Informatics 121 (2021) 103871
+
+
+                                                                     Contents lists available at ScienceDirect
+
+
+                                                        Journal of Biomedical Informatics
+                                                            journal homepage: www.elsevier.com/locate/yjbin
+
+
+Special Communication
+
+REDCap on FHIR: Clinical Data Interoperability Services
+A.C. Cheng a, *, S.N. Duda a, R. Taylor a, F. Delacqua a, A.A. Lewis a, T. Bosler b, K.B. Johnson a, P.
+A. Harris a
+a
+    Vanderbilt University Medical Center, 2525 West End Ave. Suite 1475, Nashville, TN 37203, USA
+b
+    UT Southwestern Medical Center, 5323 Harry Hines Blvd., Dallas, TX 75390, USA
+
+
+
+
+A R T I C L E I N F O                                      A B S T R A C T
+
+Keywords                                                   Background: Despite widespread use of electronic data capture (EDC) systems for research and electronic health
+Electronic health record                                   records (EHR), most transfer of data between EHR and EDC systems is manual and error prone. Increased
+Electronic data capture                                    adoption of Health Level Seven Fast Healthcare Interoperability Resource (FHIR) application programming in­
+Clinical research
+                                                           terfaces (APIs) in recent years by EHR systems has increased the availability of patient data for external appli­
+Fast Healthcare Interoperability Resources
+                                                           cations such as REDCap.
+                                                           Objective: Describe the development of the REDCap Clinical Data Interoperability Services (CDIS) module that
+                                                           provides seamless data exchange between the REDCap research EDC and any EHR system with a FHIR API. CDIS
+                                                           enables end users to independently set up their data collection projects, map EHR data to fields, and adjudicate
+                                                           data transfer without project-by-project involvement from Health Information Technology staff.
+                                                           Methods: We identified two use cases for EHR data transfer into REDCap. Clinical Data Pull (CDP) automatically
+                                                           pulls EHR data into user-defined REDCap fields and replaces the workflow of having to transcribe or copy and
+                                                           paste data from the EHR. Clinical Data Mart (CDM) collects all specified data for a patient over a given time
+                                                           period and replaces the process of importing EHR data for registries from research databases. With an iterative
+                                                           process, we designed our access control, authentication, variable selection, and mapping interfaces in such a way
+                                                           that end users could easily set up and use CDIS.
+                                                           Results: Since its release, the REDCap CDIS has been used to pull over 19.5 million data points for 82 projects at
+                                                           Vanderbilt University Medical Center. Software and documentation are available through the REDCap
+                                                           Consortium.
+                                                           Conclusions: The new REDCap Clinical Data and Interoperability Services (CDIS) module leverages the FHIR
+                                                           standard to enable real-time and direct data extraction from the EHR. Researchers can self-service the mapping
+                                                           and adjudication of EHR data into REDCap. The uptake of CDIS at VUMC and other REDCap consortium sites is
+                                                           improving the accuracy and efficiency of EHR data collection by reducing the need for manual transcription and
+                                                           flat file uploads.
+
+
+
+
+1. Introduction                                                                                 accuracy, operational efficiency, and participant safety in clinical
+                                                                                                studies and trials [2]. The shift from paper-based data collection to EDC
+    Although health records and clinical research records have both been                        has also resulted in substantial cost reductions for clinical studies and
+collected and stored digitally for many years in highly resourced coun­                         trials [3,4]. As the adoption of EDC systems for research gained popu­
+tries, the process of transferring patient data from the electronic health                      larity in the US, the passing of the US Health Information Technology for
+record into transactional study-based research databases is still pre­                          Economic and Clinical Health (HITECH) Act of 2009 led to increased
+dominantly a manual and laborious process [1]. Electronic data capture                          adoption of electronic health records (EHRs) at academic medical cen­
+(EDC) for research has created new opportunities for improving data                             ters [5]. Another piece of legislation that improved the availability of
+
+
+
+  * Corresponding author at: Office of Research Informatics, Department of Biomedical Informatics, Vanderbilt University Medical Center, 2525 West End Ave, Suite
+1475, Nashville, TN, USA.
+    E-mail addresses: a.cheng@vumc.org (A.C. Cheng), stephany.duda@vanderbilt.edu (S.N. Duda), rob.taylor@vumc.org (R. Taylor), francesco.delacqua@vumc.org
+(F. Delacqua), adam.lewis@vumc.org (A.A. Lewis), teresa.bosler@utsouthwestern.edu (T. Bosler), kevin.johnson@vumc.org (K.B. Johnson), paul.harris@vumc.org
+(P.A. Harris).
+
+https://doi.org/10.1016/j.jbi.2021.103871
+Received 4 February 2021; Received in revised form 13 May 2021; Accepted 18 July 2021
+Available online 21 July 2021
+1532-0464/© 2021 Elsevier Inc. This article is made available under the Elsevier license (http://www.elsevier.com/open-access/userlicense/1.0/).
+A.C. Cheng et al.                                                                                                Journal of Biomedical Informatics 121 (2021) 103871
+
+
+EHR data for other applications is the 21st Century Cures Act, which              execution, rather than a solution for a single project. We adhered to
+required EHR vendors to make patient data easily available through                existing REDCap development guiding principles in the REDCap Con­
+application programming interfaces (APIs) [6]. The US Food and Drug               sortium (‘build small, evaluate, evolve’ and ‘fail early, fail small’) when
+Administration (FDA) recently acknowledged these opportunities by                 developing CDIS [15]. Specifically, we gathered input from researchers
+issuing guidance to facilitate the use of EHR data in clinical in­                at VUMC regarding desirability of a generalizable CDIS service, then did
+vestigations and to promote the interoperability of EHR and EDC sys­              preliminary technical feasibility work to determine whether the EHR
+tems [7]. The confluence of technology adoption in support of both the            provided a FHIR-enabled API that could be leveraged to extract data into
+clinical enterprise with EHRs and research enterprise with EDCs is                REDCap. Next, we socialized the concept with VUMC Institutional Re­
+opening new opportunities for the use of real-world data in clinical in­          view Board leadership to help inform rules of use and necessary
+vestigations [8].                                                                 guardrails for the research community. To develop a minimum viable
+    Despite the digitization of both health and research records, there are       product, we borrowed design ideas from a previously developed and
+significant content, technical, and organizational barriers for direct            disseminated REDCap Module called Dynamic Data Pull (DDP), which
+EHR-to-EDC data transfer [9]. Researchers are often skeptical of reusing          allowed REDCap teams to connect their local REDCap installation to
+EHR content for research, citing outdated or incomplete data, inaccurate          local research data warehouse infrastructure [18]. Once a minimum
+coding, and a lack of data standardization [10]. EDC developers face              viable product was developed, we sought early champions to help test
+technical and privacy challenges gaining real-time connectivity to                CDIS setup and transactional data expectations using real-world use
+clinical data systems, leaving researchers to access clinical data indi­          cases as defined by the research teams. In this phase and as we began
+rectly through research data warehouses that are only periodically                rolling out the module to additional groups, we paired one of our lead
+updated [11]. Other technical barriers include the lack of semantic               analysts with research teams to demonstrate and train research project
+interoperability of data available from the EHR, the complexity of                owners. The analyst was then able to translate and transfer feedback
+mapping and transformations required for meaningful data exchange,                information from limited research project users to the development
+and the patchwork of standards implementation across EHR systems                  team, and subsequently add or refine the most requested features. Given
+[12]. Organizational barriers also exist. Health IT teams do not routinely        this feedback cycle, CDIS module setup and use became more intuitive
+support research and are therefore not prepared to navigate complex­              for researchers. Thus we relaxed the requirement for project setup teams
+ities of research database connectivity that are constrained by Institu­          to meet with the expert analyst for each new project. Table 1 summa­
+tional Review Board (IRB) approvals, waivers of informed consent, and             rizes the milestones in the development process of CDIS as well as the
+HIPAA authorization [13].                                                         stakeholders engaged at each stage.
+    Research Electronic Data Capture (REDCap) is a secure, web-based                  We sought to differentiate CDIS from other efforts to use FHIR APIs
+data capture application developed using technical approaches that                to collect EHR data in research databases [17] by making the entire
+mitigate many of the challenges above. REDCap allows users to design              process of project creation, data selection, data mapping, and data
+their own forms and data collection workflows. REDCap is designed to              adjudication is driven by the end user. Just as non-informatics trained
+support clinical research but can be used for all types of data collection        researchers can set up data collection forms on their own in REDCap, we
+needs such as patient-facing surveys, mobile fieldwork data gathering,            sought to design CDIS in an intuitive and user-centered way so that any
+or research operations workflow. REDCap includes a user-friendly forms            clinical researcher could use data from the EHR. A group of clinical
+design interface, field validation, customizable skip logic patterns,             researchers and REDCap administrators reviewed the challenges and
+calculated fields, data import options, data export routines for common           limitations of the prior REDCap-based data extraction solutions. Certain
+statistical packages (SPSS, SAS, Stata, R), data quality checking, basic          components of previous user interfaces were reusable and had received
+report creation, role-based user access, audit trails, and a linked mobile        broad user acceptance such as field-mapping and data adjudication. We
+app for phone and tablet-based data collection [14,15]. Notably,                  then identified other aspects of the workflow that would require
+REDCap has a comprehensive set of APIs that enable seamless integra­              redesign.
+tion with other platforms using standards such as the HL7 Fast Health­                In parallel, we reviewed use cases for EHR-to-REDCap data extrac­
+care Interoperability Resources (FHIR) [16]. The software is developed            tion through existing REDCap partner collaborations. We collected sta­
+at Vanderbilt University Medical Center (VUMC) and distributed at no              tistics for previous studies that used EHR data in our local REDCap
+cost to members of the REDCap Consortium. The REDCap Consortium is                installation and solicited feedback from researchers and informatics
+a global collaboration of over 4,700 diverse institutions that have               professionals participating in the REDCap Consortium [15]. Discussions
+installed the software and collaborate to provide support for over                with EHR vendors informed project feasibility and technical design. The
+1,400,000 unique end-users across 140 countries [15]. The REDCap                  REDCap development team attended an EHR module development
+platform is constantly evolving based upon user input to improve                  course and an EHR developers conference to supplement their knowl­
+existing capabilities or create additional features.                              edge for developing the EHR interface.
+    One frequently requested feature from the earliest days of REDCap                 We selected the Epic EHR system for initial development and rollout
+has been direct data transfer between a local EHR system and a locally            of CDIS because Epic’s EHR has a FHIR API and because VUMC is an Epic
+hosted and supported REDCap installation. To address this need, we                customer. Health IT leaders at VUMC provided us with access to an Epic
+developed a new REDCap data exchange module based on FHIR. We                     test server, direct communication with Epic technical representatives,
+describe our approach and experience developing the new REDCap                    and dedicated effort from the VUMC Health IT analysts. A team of three
+Clinical Data and Interoperability Services (CDIS) module and deploying           REDCap programmers met weekly with informatics faculty to discuss
+it at VUMC and at the University of Texas (UT) Southwestern.                      FHIR protocols, data mapping, and design decisions. Representatives
+                                                                                  from Epic met every two weeks with the REDCap development team to
+2. Methods                                                                        answer questions on EHR integration and the EHR FHIR API. Informatics
+                                                                                  faculty met regularly with VUMC Health IT analysts, the Privacy Office,
+2.1. Defining system requirements                                                 and IRB representatives to ensure all necessary privacy, security, and
+                                                                                  regulatory issues were addressed. Both data and user access restrictions
+    One design principle that led to the success of REDCap is empow­              were implemented based on input from all groups. Pilot testing of the
+ering researchers to set up projects with minimal involvement from In­            resulting tool was conducted jointly with REDCap partners at UT
+formation Technology (IT) staff and REDCap administrators. This                   Southwestern Medical Center. UT Southwestern is also an Epic customer
+principle guided development of CDIS as we sought to enable EHR-to-               and was able to implement all the features of CDIS in a similar fashion to
+EDC extraction for hundreds of projects with self-service setup and               VUMC.
+
+                                                                              2
+A.C. Cheng et al.                                                                                                     Journal of Biomedical Informatics 121 (2021) 103871
+
+
+Table 1                                                                               (CDM) and models the workflow of extracting EHR data in bulk for a
+Milestones in CDIS development and stakeholders engaged.                              known cohort of patients. Researchers identify a cohort using a list of
+  Milestone                                       Stakeholders             Time       MRNs, specify applicable begin/end dates by project or by patient, and
+                                                  engaged                             provide information on relevant data elements for retrieval. REDCap
+  Initial Epic EHR and VUMC health IT             Leadership               2017       then takes these instructions and creates a project database, extracts all
+    engagement                                                             Q1         relevant patient data, deposits those data into the newly created data­
+  Commencement of early FHIR and OAuth2           Technical                2017       base, and assigns user rights for that database to the researcher. The
+    connectivity testing at VUMC                                           Q2         CDM is ideal for developing registries and other research projects where
+  CDP module design and testing                   Technical                2017
+                                                                           Q2
+                                                                                      an unknown and unlimited number of visits or measurements values
+  CDP IRB consultation and planning               Regulatory               2017       such as laboratory results, vital signs, diagnoses, or other collected data
+                                                                           Q2         points of the same type are needed per patient. This self-service work­
+  UTSW engagement as early adopter                Leadership, Consortia    2017       flow is an improvement over traditional methods of creating a data mart
+                                                                           Q3
+                                                                                      (see Fig. 1). Obtaining data directly from the EHR eliminates the de­
+  End-user documentation created @ UTSW           Technical, Research      2018
+                                                  support                  Q1         pendency on research data warehousing infrastructure, which is often
+  Training model established for enterprise       Research Support         2018       unavailable at smaller healthcare organizations. Direct EHR to EDC data
+    dissemination @ VUMC                                                   Q2         transmission also carries the benefit of data timeliness, as research data
+  CDP dissemination to at Epic developers         Consortia                2018       warehouses are not typically updated with operational EHR data in real-
+    conference                                                             Q2
+  CDP dissemination to REDCap consortium          Consortia                2018
+                                                                                      time and are instead updated periodically such as every evening. EHR-
+                                                                           Q2         based FHIR APIs allow researchers to obtain data as soon as they are
+  Approval process for new projects established   Regulatory, Research     2018       entered in the EHR.
+    @ VUMC                                        support                  Q2             In the remainder of the methods section, we discuss design consid­
+  First CDP project live @ VUMC                   Researchers, Research    2018
+                                                                                      erations for specific features of CDIS, including EHR variable selection,
+                                                  support                  Q3
+  Release of REDCap button within Epic browser    Technical                2018       mapping, adjudication, EHR window iframe, CDM data representation,
+                                                                           Q3         break-the-glass, access control, and authentication.
+  Approval process for new projects established   Regulatory, Research     2018
+    @ UTSW                                        support                  Q3         2.3. Choosing EHR data fields
+  First CDP project live @ UTSW                   Researchers, Research    2019
+                                                  support                  Q1
+  First end-user training @ VUMC                  Researchers, Research    2019           For both CDP and CDM use cases, users must specify EHR data ele­
+                                                  support                  Q1         ments needed for their project. We designed this process to be as user-
+  REDCap released on Epic App Orchard             Leadership               2019       friendly as possible so that researchers without experience with EHR
+                                                                           Q1
+                                                                                      coding standards would be able to identify the data elements they need.
+  First CDM project live @ UTSW                   Researchers, Research    2019
+                                                  Support                  Q2         Fig. 2 shows the REDCap user interface developed for this purpose.
+  CDM IRB consultation and planning (for access   Regulatory               2019       Researchers navigate lists of available data fields by domain or use a
+    controls)                                                              Q3         keyword search bar that helps users find the right data types. The or­
+  First CDM project live @ VUMC                   Researchers, Research    2019       ganization and availability of individual EHR-based data fields available
+                                                  Support                  Q3
+  First Cerner site live                          Technical, Consortia     2019
+                                                                                      for mapping are derived from a file that can be customized by any
+                                                                           Q3         REDCap partner institution. Initial seeding for this informational file
+  Mapping helper design and testing               Technical, Researchers   2020       was derived from a list of Logical Observation Identifiers Names and
+                                                                           Q1         Codes (LOINC) codes for available data in the research data warehouse
+  Break-the-glass live                            Technical, Researchers   2020
+                                                                                      at VUMC. It was supplemented by LOINC codes contributed by UT
+                                                                           Q2
+  Stakeholder groups                                                                  Southwestern, who gathered this list from available data in their local
+  Leadership (VUMC C-suite, Epic research leadership, VUMC Office of Research         Epic system.
+    leadership, Health IT leadership, Clinical Research Informatics Officer)              In practice, we found that even with the search bar some clinicians
+  Technical (Health IT analysts, Epic analysts)                                       had a hard time finding the EHR variables needed for their study. For
+  Regulatory (IRB representatives, privacy officer)
+  Research Support (Trainers, and process managers)
+                                                                                      example, a search for “glucose” might yield 20 possible data types, many
+  Consortia (Epic customer groups, REDCap consortium)                                 of which will not have any data from the EHR. To address this challenge,
+  Researchers (Investigators, coordinators, biostatisticians)                         we designed a “mapping helper” shown in Fig. 3 that enabled users to
+                                                                                      search the available FHIR data by entering a known study participant’s
+                                                                                      MRN. The researcher can then see real-world data and associated codes
+2.2. Defining initial use cases and operational data flow requirements
+                                                                                      to inform the process of final EHR-to-REDCap data mapping choices.
+
+    The first use case, called Clinical Data Pull (CDP), improves the
+                                                                                      2.4. Mapping EHR data to REDCap fields
+process for data collection in traditional prospective studies where
+research teams create and complete case report forms (CRFs) for each
+                                                                                          Since no two study CRFs are alike, creating an interface to map EHR
+study participant. Stakeholders identified two workflows for adding
+                                                                                      data to fields in REDCap that can generalize to many use cases has to be
+patients to studies. Adding patients to a CDP project is possible from an
+                                                                                      flexible and easy to use. Mapping fields between an EHR system and EDC
+EHR browser window (e.g. researcher views a patient and wants to
+                                                                                      system in a meaningful way requires careful consideration, including
+insert them as a study participant in the EDC system) or within the EDC
+                                                                                      static and temporal data relationships. Stakeholders identified the need
+screens (e.g. researcher is working in EDC system and wants to add a
+                                                                                      for mapping one-to-many relationships, where multiple measurements
+participant by typing an medical record number (MRN) or refresh CRF
+                                                                                      on a given day had to map to a single REDCap field. We also designed a
+data on an existing participant). The goal was to allow researchers to use
+                                                                                      way to define mapping relationships where several similar observation
+whichever workflow was natural for their particular use case while
+                                                                                      types (for example blood pressure while sitting or supine) could be
+eliminating the need for clinicians and research personnel to transcribe
+                                                                                      considered for mapping to one REDCap field. Fig. 4 shows a typical
+data with the EHR open in one window and a REDCap CRF open in
+                                                                                      mapping screen configuration and illustrates several important concepts
+another window.
+                                                                                      supported in the mapping process. Mapping non-temporal data that is
+    The second identified module use case is called Clinical Data Mart
+                                                                                      static for patients such as demographic data is straightforward. Users
+
+                                                                                  3
+A.C. Cheng et al.                                                                                                 Journal of Biomedical Informatics 121 (2021) 103871
+
+
+
+
+                    Fig. 1. Traditional workflow for creating a registry from EHR data in REDCap (greyed out) compared to new CDIS workflow.
+
+
+
+
+                                                     Fig. 2. Variable selection screen with keyword search.
+
+
+simply select the REDCap field in the CRF where the EHR data of that               per patient such as lab values or vital signs, the user can define criteria
+type should be deposited. Temporal measures require an anchoring date              for REDCap to preselect a given value. Users specify preselection of the
+such as the date of an encounter. For data elements with multiple values           closest measurement to the anchoring date and time, the greatest or least
+
+
+                                                                               4
+A.C. Cheng et al.                                                                                             Journal of Biomedical Informatics 121 (2021) 103871
+
+
+
+
+                                                                Fig. 3. Mapping helper.
+
+
+value over a time interval, or the earliest or latest value in that time        2.6. Data adjudication in CDP
+interval. Defining pre-selection criteria expedites the EHR-to-EDC data
+adjudication process that is part of the CDP user workflow.                         Modeling after researcher workflows, we recognized that chart re­
+                                                                                views sometimes involve clinical interpretation by research co­
+2.5. EHR workflow for CDP project                                               ordinators. Therefore, we built into the CDP workflow an adjudication
+                                                                                step where all relevant data automatically retrieved from the EHR could
+   Another requested functionality of our CDP module was the ability to         be quickly reviewed in one screen before ingestion into electronic CRFs.
+complete REDCap case report forms from within a patient’s record in­            When a patient is added to a study, REDCap immediately uses the EHR-
+side an EHR browser window. If desired, local Health IT teams may               FHIR services to extract demographic data elements from mapped fields.
+create a menu item in the EHR interface that serves to launch the               The retrieved data is presented to the end user for adjudication before
+REDCap Client App from within the EHR. With authorization to access             being recorded in the CRFs. Fig. 5 shows a screenshot of the data
+the REDCap CDIS, users could click this menu item to open REDCap in             adjudication for demographic data while Fig. 6 demonstrates data
+an iframe (allows inclusion of web content from one source within the           adjudication for lab data with the most recent lab measurements
+current web environment), providing secure connectivity and rendering           preselected.
+REDCap screens within the EHR window. The REDCap screens displayed                  After a patient is registered within the REDCap project, REDCap will
+within the EHR workflow were modified to remove non-essential                   scan for any anchor dates for temporal data elements such as lab values.
+REDCap menu items and hide all REDCap projects except those gran­               When identified, REDCap invokes an EHR FHIR API call requesting
+ted permission to use CDIS.                                                     relevant patient data within the specified date window and matching
+   When accessing the module from within the EHR, the REDCap view               CRF-defined data types. The REDCap system can perform automated
+shows all REDCap projects where the user has access, CDP is active, and         data retrieval on a user-specified frequency (default is every 24-hours)
+data mappings have been established. When a patient record is active in         to collect new data from the EHR for each research participant. If new
+the EHR, REDCap will automatically show the status of the patient on            data are found, the REDCap system automatically alerts the research
+each of the displayed CDP projects. If a patient is already added to a          project team for new data adjudication upon next login to REDCap.
+specific study, selecting that study in the REDCap iframe automatically
+opens that patient’s REDCap case report forms. If a patient is not yet
+                                                                                2.7. Registry data representation
+enrolled in a specific study, selecting that study in the REDCap iframe
+asks for confirmation, then adds the patient to study. A patient can also
+                                                                                    Generalizability was also paramount when designing a data model
+be added to a study in the REDCap interface by entering a medical re­
+                                                                                for CDM projects. Registry data in REDCap must mimic a relational
+cord number in the REDCap project.
+                                                                                database where some tables are one row per record while other tables
+                                                                                are many rows per record keyed to a record identifier. The solution we
+                                                                                came up with was to use REDCap repeating instruments for data that had
+
+                                                                            5
+A.C. Cheng et al.                                                                                                  Journal of Biomedical Informatics 121 (2021) 103871
+
+
+
+
+                    Fig. 4. REDCap CDP project mapping with examples of non-temporal, one-to-one, many-to-one, and many-to-many scenarios.
+
+
+many values per record such as for vital signs, labs, medications, prob­          observation and the date and time of the observation. A data mart
+lem list conditions, and allergies. Data adjudication is not necessary in         project can be revised and re-run with new medical record numbers and
+CDM because data elements such as labs and vital sign measurements                a different date range. In this case, REDCap appends new records and
+with multiple values are all imported into REDCap. Fig. 7 shows how               repeating values to existing data. There are also options to revise data
+data are represented in repeating instruments in CDM.                             elements within the Data Mart at any point after initial setup and data
+    Researchers initiate a Data Mart project by selecting the “Clinical           retrieval.
+Data Mart” template when creating a new REDCap project. Users enter a
+list of medical record numbers to include in their study and specify a
+date range for data to obtain from the EHR. They also select the types of         2.8. Break-the-glass scenarios
+data they want to obtain from the list of available endpoints. Once they
+create their project, REDCap project creation can be halted to allow a                The first VUMC project to use CDM brought to light an issue where
+REDCap Administrator to grant approval for pulling data. Once                     researchers were unable to confirm escalated authorization to access
+approved, REDCap will automatically create one instrument per data                patient records (“break-the-glass” procedures to access records of flag­
+type. Data elements where there may be more than one observation per              ged patients such as employees or famous individuals) when retrieving
+individual will appear as repeating instruments where the data element            data for a patient that the EHR suspected was inappropriate for the user
+name will appear in a data label field accompanied by the value of the            to access. Through the typical process of opening a restricted patient’s
+                                                                                  chart in the EHR browser, users must enter a reason for viewing the
+
+                                                                              6
+A.C. Cheng et al.                                                                                                Journal of Biomedical Informatics 121 (2021) 103871
+
+
+
+
+                                                       Fig. 5. REDCap CRF Data Adjudication Process.
+
+
+
+
+                                     Fig. 6. Adjudication of labs with multiple values and most recent value preselected.
+
+
+record but then are immediately granted access. These justifications are           responsible for any inappropriate access.
+audited by security officials at the institution. Although carefully
+controlled, our developers devised an Epic-only feature that allowed               2.9. Controlling access to CDIS modules
+users to provide a reason for accessing the patient record from within
+REDCap. In the case where CDIS is attempting to access multiple                        Electronic health records are sensitive data. Ethically, the clinical
+restricted records, users have the option of entering in one reason and            research enterprise must protect the privacy of patients and research
+explanation for all records, or to enter in separate justifications for each       participants [19]. Privacy or security breaches could also result in hefty
+patient. These justifications are available for audit and users may be held        fines or loss of reputation for the institution [20]. Our goal in creating
+
+                                                                               7
+A.C. Cheng et al.                                                                                               Journal of Biomedical Informatics 121 (2021) 103871
+
+
+
+
+                                                            Fig. 7. Data representation in CDM.
+
+
+CDIS was to create additional tools and operational efficiency for re­            depicted in Fig. 8. First, the REDCap user’s credentials are checked to
+searchers, while ensuring data extracts were immediately stored in a              ensure the user has EHR access privileges. Next, the REDCap project’s
+HIPAA-compliant data ecosystem. We also sought to standardize the                 registered IRB number is checked against the local IRB record system to
+processes for regulatory review and approval of research projects                 ensure the project has an active IRB approval. Finally, the REDCap
+requiring EHR data. Before creating any new informatics self-service              username is checked against the list of current “key study personnel”
+tool, we usually engage local experts and key informants from human               registered for the IRB study associated with the REDCap project. If any
+subjects, privacy, and cybersecurity. In this case, we also consulted with        one of the checks failed, the REDCap EHR connection is immediately
+a group of Epic customers interested in clinical research to ensure direct        blocked. This is all done using a custom web service with which CDIS
+FHIR endpoint connections and project extraction processes would not              can optionally interface if a given REDCap institution wishes to employ
+adversely affect performance of our production EHR system.                        additional permission checks for users utilizing the CDIS services.
+    At Vanderbilt and all other adopting REDCap consortium partners,                  End-users inherit access rights only to data that their EHR access
+CDIS must be enabled by a REDCap Administrator using the REDCap                   allows them to access. Access logs are kept by both the EHR and by
+Administrator Control Center. This allows local REDCap Administrators             REDCap should auditing become necessary. REDCap monitors and logs
+at each organization to ensure local authentication and launch proced­            when users view and access data that has been stored in a REDCap
+ures are in place before CDIS functionality is available to researchers.          project, including EHR-imported values, and for values that have been
+Administrators can also enter institution specific information that users         imported but not yet saved formally in a REDCap project using the CDP
+can view such as links to local policies and CDIS study-specific activation       service, REDCap additionally logs the data being viewed by a user prior
+requests (usually a REDCap survey managed by the REDCap support                   to adjudicating such data. This provides an extra layer of logging on top
+team). Within the CDIS framework, CDP and CDM modules can be                      of REDCap default audit trail capabilities.
+enabled or disabled independently by the local REDCap Administrator
+and the decision to authorize use for a specific project requires
+                                                                                  2.10. Technical considerations
+Administrator approval. This multi-tiered level of access control gives
+full autonomy to local research informatics teams.
+                                                                                     Back-end connectivity between EHR FHIR endpoints and REDCap
+    For VUMC investigators, we also designed a real-time automated
+                                                                                  must be established before activating CDIS. At Vanderbilt, our Health IT
+algorithm to allow project-level access to CDIS module functionality
+                                                                                  team enabled FHIR web services and registered a new FHIR App Client
+
+
+
+
+                              Fig. 8. Real-time algorithm for establishing CDIS connection between REDCap and EHR at VUMC.
+
+                                                                              8
+A.C. Cheng et al.                                                                                               Journal of Biomedical Informatics 121 (2021) 103871
+
+
+for CDIS with Epic. This App Client is available for Health IT access and          institutions, we used data from the Epic App Orchard [18] to track how
+registration at any Epic institution. The registration of this App Client is       many institutions requested the REDCap application, when those in­
+required for Epic to accept web service connections from any third-party           stitutions first pulled data from their Epic production environment into
+client. Once the FHIR App Client was established, the Health IT team               REDCap, and how many total Epic FHIR API invocations those in­
+provided Client App token identifiers and “secret” workflow and data               stitutions made.
+exchange connectivity tokens to be stored in the accessing application
+(REDCap). We were able to configure the client to use OAuth2 autho­                3. Results
+rization with refresh tokens enabled to ensure persistent connectivity
+between REDCap and Epic. To avoid burdening providers with multiple                    As of November 30, 2020, the CDIS services have been implemented
+logins, we configured REDCap to accept the EHR login using the OAuth2              for 82 projects at VUMC. Among these, 55 are clinical data pull projects
+protocol. The first time a specific EHR user invokes REDCap within the             and 27 are clinical data mart projects. These projects have transferred
+EHR workflow, the CDIS module requests that the user login to REDCap               over 19.5 million data values from the EHR system to REDCap. Fig. 9
+to link a user’s REDCap and EHR accounts.                                          shows the growth of projects, patients with data imported by CDIS, and
+    When testing CDIS with our early adopters, we had to determine a               data points imported by CDIS over time. VUMC users first started
+proper strategy for maintaining the integrity of data in REDCap. Because           creating CDP projects in July 2018 and started creating CDM projects in
+CDIS allows for only unidirectional data transfer from the EHR to                  March 2020.
+REDCap, all data validation steps are performed in REDCap. If the                      At UT Southwestern, 17 projects used CDP to pull 45,724 data points
+connection between REDCap and the EHR fails during a transfer, no data             for 5181 records from October 2018 to November 2020. As with VUMC,
+is added to the project and REDCap will reattempt the API call once the            and UT Southwestern saw growth in CDIS usage over time as indicated
+connection is reestablished. With all transfers, REDCap will check to see          in Fig. 10.
+if the incoming EHR data already exist in REDCap. If the data already                  Twenty-six other institutions using Epic have implemented the
+exist, REDCap will skip over that record to ensure that the data is                module and 38 additional organizations are in the process of imple­
+consistent. If data is changed in the EHR for a repeating data element             menting. Among the Epic institutions that have implemented CDIS in
+such as a lab value or vital signs measurement in a CDM project, a                 their production environment, REDCap has invoked the FHIR API
+duplicate repeating instance will be created with the changed data.                512,829 times from October 2019 to September 2020. Fig. 11 shows the
+Therefore, it is incumbent on the user to resolve conflicting data in a            growth of requests for CDIS among institutions with Epic EHRs over
+CDM project, such as two blood glucose measurements with different                 time. As of December 2020, REDCap is the most downloaded research
+values but the same timestamp.                                                     app, second most downloaded free app, and ninth most downloaded of
+                                                                                   all apps on Epic’s App Orchard. Nine institutions with Cerner EHRs are
+2.11. Evaluation                                                                   also in the process of installing REDCap CDIS.
+                                                                                       The most common FHIR resource used by CDIS users depended on
+    We performed an initial evaluation of CDIS by measuring the extent             whether they were collecting data using CDP or CDM. Fig. 12 shows the
+of its use among research teams at VUMC and UT Southwestern. To                    proportion of data by FHIR resource. CDP projects were typically built
+calculate statistics, we used reporting capabilities built into REDCap to          around case report forms and pulled more patient demographic data.
+count the number of projects, records, and data points collected for CDIS          Meanwhile, CDM projects pulled more observation data such as vital
+projects from the beginning of CDIS implementation on May 1, 2018 to               signs and laboratory values, medications, and conditions.
+November 30, 2020. To measure the growth of CDIS use at other                          Qualitatively, we see a variety of medical specialties using CDIS.
+
+
+
+
+                          Fig. 9. Numbers of projects, patients, and data points collected from the EHR at VUMC by CDIS by month.
+
+                                                                               9
+A.C. Cheng et al.                                                                                               Journal of Biomedical Informatics 121 (2021) 103871
+
+
+
+
+                    Fig. 10. Numbers of projects, patients, and data points collected from the EHR at UT Southwestern by CDIS by month.
+
+
+                                                                                   While most projects thus far have come from critical care use cases, we
+                                                                                   have also seen projects initiated by clinicians in Allergy, Pulmonary,
+                                                                                   Cardiology, Gastroenterology, Hearing and Speech Sciences, Infectious
+                                                                                   Disease, Medical Oncology, Medicine, Microbiology, Neurology,
+                                                                                   Nursing, Orthopedics, Pediatrics, Pharmacy, Psychiatry, Rehabilitation
+                                                                                   Services, and Surgery. Additionally, we have used CDIS to build a
+                                                                                   COVID-19 Recruitment Data Mart to proactively identify trial partici­
+                                                                                   pant candidates from our outpatient population for three concurrent
+                                                                                   COVID-19 trials [21].
+
+                                                                                   4. Discussion
+
+                                                                                   4.1. Lessons learned
+
+                                                                                       We successfully created and deployed FHIR-based EHR data extrac­
+                                                                                   tion services, enabling researchers to map and automatically extract
+Fig. 11. Institutions with the Epic EHR that requested and implemented CDIS
+                                                                                   EHR data for use in the REDCap EDC system. We also proved that CDIS
+cumulatively by month since requests on the App Orchard began in
+February 2019.
+                                                                                   can be deployed and operationalized at other institutions using Epic. At
+                                                                                   VUMC and other institutions that have implemented CDIS, millions of
+                                                                                   data points on hundreds of thousands of patients have been pulled in
+
+
+
+
+                                 Fig. 12. Proportion of data values collected in CDIS at VUMC and UTSW by FHIR resource.
+
+                                                                              10
+A.C. Cheng et al.                                                                                                Journal of Biomedical Informatics 121 (2021) 103871
+
+
+real-time from the EHR. Every record pulled through CDIS is one fewer              project permissions, IRB project approval status, and key study
+that had to be entered through a more error-prone, less efficient, or less         personnel status each time an end user logs into a FHIR-enabled REDCap
+secure manner. CDIS has decreased the need for data to be manually                 project. In addition to having guardrails, data permissions need to be
+transcribed, copied and pasted, or uploaded as a flat file into REDCap.            properly managed. Data permission rights are set at the project level
+The growth of projects using CDIS at VUMC and UT Southwestern shows                (through mapping processes previously described in this manuscript),
+that researchers are initiating and running their own projects. Aside              but also inherit rights and limit controls from the EHR system. In­
+from the initial effort to set up CDIS, there has been no need for project-        dividuals cannot generally pull data via HL7-FHIR services that they
+by-project involvement of Health IT in these research projects that                would not otherwise be able to view in the medical record. EHR controls
+collect data from the EHR.                                                         such as “break the glass” operations for employees and VIP-flagged
+    CDIS is enabling EHR to EDC data transfer at institutions that never           patients are preserved in our extraction methods. Finally, involvement
+had that capability in the past. By enabling direct transfer of data from          of the IRB is a critical part of the process. We discussed the new REDCap
+the EHR to REDCap, CDIS makes it possible for smaller healthcare or­               module and associated data extraction services multiple times with
+ganizations without a research database to create registries and partic­           VUMC IRB leadership and were assigned an analyst who participated in
+ipate in pragmatic inter-institutional studies where EHR data is needed.           research project consultations and helped design standard procedures
+Furthermore, data latency is no longer an issue since FHIR service calls           for review and approvals. This helped ensure we were maximizing
+allow realization of real-time data extraction immediately after entry in          protection of research participants while minimizing burden to re­
+the EHR.                                                                           searchers. The IRB also assisted in writing protocol and amendment
+    Additional guidance on the REDCap CDIS setup and functionality is              language that researchers could reuse.
+available at https://projectredcap.org/software/cdis/. All REDCap dis­                 Just because we built something functional does not mean users were
+tribution source code is available at no cost to REDCap Consortium                 ready to take advantage of the new functionality right away. We learned
+partners including code for CDIS described in this manuscript. The only            that socializing a complex new EDC feature requires hands-on support at
+minimum system requirements for CDIS are that the EHR system has                   the individual project level. We promoted the new FHIR-based services
+enabled the FHIR API services, and that the REDCap server is on the                using education seminars and the VUMC StarBRITE researcher portal
+same network or is able to reach the EHR FHIR server. An Epic Client               [23], and supplemented our weekly REDCap walk-in clinics with con­
+App is available through the Epic App Orchard (search for “REDCap”).               sultations by request for EHR data extraction support. These one-on-one
+REDCap consortium members with Cerner can find installation guides                 meetings helped to ensure research teams were aware of features and
+within REDCap Control Center and support for setting up the Cerner to              provided valuable feedback to our development team about real-world
+REDCap connection is available on the REDCap Community website                     study needs. To avoid distractions, we declined requests to incorpo­
+[22].                                                                              rate data types outside our initial offerings (demography, medications,
+    Developing CDIS not only yielded a product that can improve the                problem list, allergies, vital signs, and laboratory measures) until we
+efficiency and accuracy of research data collection; it also taught us             were able to test and operationalize the general framework on multiple
+about the technical, policy, and governance challenges of implementing             production research projects. Individual research team training sessions
+technology that interfaces with EHRs. Engaging the right institutional             allowed our team to understand complexity and coverage for data
+leadership and informatics staff was paramount in developing CDIS. We              mappings and research team data management workflows. This led
+were able to rally organizational support because of the collegial rela­           directly to a REDCap ‘Mapping Helper’ functional product used in
+tionship between informatics and IT, and willingness by developers at              setting up projects that takes as input a single medical record number
+Epic to think about integration with REDCap from a vendor perspective              and returns all LOINC codes associated with that MRN over a relevant
+[23]. Pairing research infrastructure with clinical operations infra­              period. This functionality can be easily used by our REDCap trainer and
+structure required technical parity in terms of development, testing, and          a research coordinator to minimize time needed for mapping individual
+production systems integration. Engaging IT staff from the beginning of            data fields between the EHR and REDCap. While CDP was developed
+implementation was also essential for success. Anecdotally and at UT               first, early work with research teams frequently requested the func­
+Southwestern, implementation can take as little as 4 h if Health IT staff          tionality now available in CDM. Finally, by listening to research team
+and REDCap administrators sit down for a focused session to set up CDIS.           questions about data, we have developed a prioritization queue of new
+A focused implementation session is highly preferred to sending emails             data elements (e.g. clinical notes) to add to the mapping and imple­
+back and forth, which can take months from project initiation to project           mentation roadmap.
+completion.                                                                            Building on our experience disseminating REDCap, we have also
+    From a technical standpoint, we learned that there is value in                 learned lessons about disseminating CDIS that are unique to a product
+selecting the FHIR resources with the greatest impact. We started CDIS             that integrates with EHRs. As we began sharing CDIS services outside of
+development with DSTU2 and a select set of data types prioritized by               VUMC, we found partners often asked similar questions about technical
+experience with research data management: Demographics, conditions,                and regulatory hurdles. In addition to improving the guidance for
+medications, vital signs, and laboratory measurements. These data types            implementation embedded into REDCap, we started bi-monthly “office
+represented a high percentage of those requested by researchers in                 hours” conference calls open to any REDCap consortium members that
+completing case report forms (CRFs). Even with the right resources                 had questions about CDIS. These calls were staffed by a CDIS developer
+selected, figuring out the best representation for the data would ensure           and an analyst. After initiating these calls, we saw a decrease in the
+that users are not overwhelmed with data. The FHIR API payload con­                amount of time sites took to go from requests to deployments in the
+tains much more information than what we save in REDCap. We were                   production environments of their respective EHRs. Research collabora­
+careful to include all information needed to enable our use cases, while           tions with other institutions were also critical to testing and launching
+excluding any extraneous data that was not useful for researchers.                 the CDIS module. Our earliest research collaboration included sharing
+    We also learned important lessons in regulatory and governance                 mappings with a team at UT-Southwestern for a multi-center project
+considerations when it comes to developing applications that extract               where both Vanderbilt and UT Southwestern were participating. We
+data from the EHR with FHIR APIs. Direct extraction of data from EHR               found that 80% of the EHR-REDCap mappings set at Vanderbilt trans­
+systems has great advantages to research teams, but also carries privacy           ferred to the UT Southwestern EHR. Later, we were able to secure
+risks. To limit risks, external applications should establish linkage, if          funding for a multi-center grant leveraging use of the FHIR Module at
+possible, to institutional source systems (e.g. clinical trial management          four Epic partner sites and one Cerner partner site. This helped incen­
+system, IRB system). At Vanderbilt, we built a restful API service that            tivize sites to join and helped our consortium support team learn how to
+confirms person-level EHR login rights, REDCap login rights, REDCap                engage and promote conversations between local Health IT teams, local
+
+                                                                              11
+A.C. Cheng et al.                                                                                                  Journal of Biomedical Informatics 121 (2021) 103871
+
+
+REDCap teams, and local research leadership. The one driving factor in              local software customizations.
+promoting adoption and uptake was realization by research leadership                    Due to the rapid and iterative nature of software development within
+that setting up the module once would enable use for many studies,                  the REDCap consortium, we were not able to follow a rigorous quali­
+ultimately reducing the requirements for Health IT teams to engage in               tative process for guiding the development of CDIS or evaluating its
+individual research project planning and implementation. After initial              usability. With software developed for clinical research and available at
+deployment at UT Southwestern and Vanderbilt, using direct connection               no cost, users “vote with their feet”, and will only use software that
+with Epic engineers at Vanderbilt to support security token creation and            improves their processes and is well-designed for their needs. Therefore,
+sharing, we realized that large-scale deployment across many in­                    we believe that usage statistics are an appropriate metric for usability in
+stitutions would benefit from inclusion in Epic’s App Orchard. The App              this case.
+Orchard option helped streamline communication and raised the repu­                     We rejected one stakeholder use case as being out of scope for CDIS
+tation and visibility of the REDCap platform and research domain work.              development. A common request among research teams was to write
+Another part of our strategy for disseminating CDIS was to take                     data to the EHR in addition to reading data from the EHR. Given strict
+advantage of every opportunity to present the technology to potential               regulatory and institutional policies regarding what data can become
+users and collaborators. Requests for CDIS and attendance at office                 part of the medical record, we decided this was beyond reach for most
+hours increased following each event. As of December 2020, we have                  organizations. However, we will continue to assess the research land­
+made presentations about CDIS to the NIH Collaboratory, the Center for              scape and consider this feature for future implementation.
+International Blood and Marrow Transplant Research, and the American                    Non-Epic institutions constitute a minority of CDIS module users to
+Medical Informatics Association.                                                    date. We have partnered with REDCap institutions using Cerner to test
+                                                                                    the CDIS workflow and hope to find partners using other EHR systems.
+4.2. Upcoming CDIS features                                                         Differences in FHIR implementation, especially persistent connectivity,
+                                                                                    across EHR vendors offers an additional challenge. Although we have
+    We are continuing to improve and adapt CDIS based on feedback                   described our methods here in the context of Epic software, we believe
+from the research community at VUMC as well as our consortium                       the processes required for setup will generalize to other EHR systems.
+members. CDIS currently supports the DSTU2 version of the FHIR
+standard. With the newer R4 becoming widely implemented across most                 6. Conclusion
+EHR systems, we will be adding R4 resources such as encounters and
+appointments in an upcoming version of REDCap.                                           We established a generalizable real-time data exchange between a
+    Another highly requested feature by CDP users is to have the ability            vendor EHR system and an electronic data capture system (REDCap) in a
+to automatically adjudicate preselected values using mapping modifiers              scalable manner that supports many concurrent research projects with
+to guide computational choice. After a requisite round of testing on                little project-specific investment by an institution’s Health IT enterprise
+multiple study participants, we will allow research teams to select auto            or REDCap Administrators. By leveraging HL7 FHIR standards, we were
+adjudication mode to reduce burden on research staff by eliminating the             able to develop a new REDCap module that enables data extraction for
+step of having to log into REDCap to adjudicate values whenever new                 traditional CRF-based studies, registries, and data marts. The module
+data are available.                                                                 has been used in many high-profile studies at Vanderbilt University
+    With the increasing popularity of CDIS at VUMC, large clinical data             Medical Center and has been disseminated to many REDCap institutions.
+mart projects with many patients and a large number of records are                  Implementation and testing of the module with other EHR vendor sys­
+starting to affect the performance of the EHR’s API. Future versions of             tems is ongoing and we are exploring data mapping options for addi­
+CDIS will take advantage of Bulk FHIR Data Access, where a large                    tional FHIR Resource domains, including clinical notes and medical
+amount of data can be transferred in on a single request instead of the             device data. REDCap is developed around the concept that “used sys­
+current model where each patient and each resource requires a separate              tems get better”. We are excited about the prospect of building inno­
+request [24]. CDIS with Bulk FHIR will improve CDM performance for                  vative use cases and iteratively improving CDIS functionality based on
+data transfers that involve many patients and many endpoints. We are                feedback from REDCap Consortium members, ultimately with the goal
+also looking at patient OAuth2 functions allowing patients to authenti­             of improving the efficiency, accuracy, and safety of clinical and trans­
+cate into a patient portal to give explicit approval for use and transfer of        lational research across the globe.
+medical data to the EDC.
+    From an evaluation standpoint, we are designing studies to collect              Declaration of Competing Interest
+quantitative data for the time saved and errors reduced by CDIS. For a
+clinical trial where the workflow is for study coordinators to enter data               The authors declare that they have no known competing financial
+into a case report form from the EHR, we will observe how much time                 interests or personal relationships that could have appeared to influence
+was spent entering data using EHR and REDCap access logs. We will then              the work reported in this paper.
+collect the same data using CDIS and determine, through manual review,
+the level of agreement between the human curated data and the CDIS                  Acknowledgements
+collected data. Studies such as these will provide us with more evidence
+that CDIS is improving the efficiency and accuracy of clinical research                 The authors would like to acknowledge Nancy Smider, Tom Yosick,
+data collection.                                                                    Ankit Prasad, and Jack Nebel from Epic who worked closely with us in
+                                                                                    implementing CDIS with the Epic electronic health record. We would
+5. Limitations                                                                      also like to acknowledge Vanderbilt Biostatisticians Chris Lindsell and
+                                                                                    Kim Hart who facilitated early use cases for CDIS with members of the
+    While FHIR is an interoperability standard adopted by many EHR                  clinical research community.
+systems, the extent to which data elements are available via FHIR varies
+greatly from institution to institution. Availability of FHIR services from         Funding
+the EHR varies by EHR vendor, EHR version, and local Health IT teams
+ability and willingness to enable those FHIR services. CDIS configuration              The primary development work for this project was supported by the
+requirements, such as those that affect how EHR systems establish and               National Center for Advancing Translational Sciences [grant number 5
+maintain FHIR-client sessions or how specific components of FHIR                    UL1 TR002243-04]. Dissemination materials, information sharing ses­
+domain services are enabled, also vary by EHR vendor, version, and                  sions, and programmed support activities related to promoting these
+
+                                                                               12
+A.C. Cheng et al.                                                                                                                   Journal of Biomedical Informatics 121 (2021) 103871
+
+
+FHIR-based methods for use by clinical and translational research teams                         [12] J. Adler-Milstein, Moving Past the EHR Interoperability Blame Game, NEJM
+                                                                                                     Catalyst. 3 (2017), https://doi.org/10.1056/CAT.17.0448.
+was funded by the National Library of Medicine [contract number
+                                                                                                [13] R.S. Dokholyan, L.H. Muhlbaier, J.M. Falletta, J.P. Jacobs, D. Shahian, C.K. Haan,
+75N97019P00279]. Preparatory use case design and exposure to regu­                                   E.D. Peterson, Regulatory and ethical considerations for linking clinical and
+latory experts was supported by the National Center for Advancing                                    administrative databases, Am. Heart J. 157 (2009) 971–982.
+Translational Sciences [grant number 1 U24 TR001608-01].                                        [14] P.A. Harris, R. Taylor, R. Thielke, J. Payne, N. Gonzalez, J.G. Conde, Research
+                                                                                                     electronic data capture (REDCap)–a metadata-driven methodology and workflow
+                                                                                                     process for providing translational research informatics support, J. Biomed.
+References                                                                                           Inform. 42 (2009) 377–381.
+                                                                                                [15] P.A. Harris, R. Taylor, B.L. Minor, V. Elliott, M. Fernandez, L. O’Neal, L. McLeod,
+ [1] E.C. Murphy, F.L. Ferris 3rd, W.R. O’Donnell, An electronic medical records system              G. Delacqua, F. Delacqua, J. Kirby, S.N. Duda, REDCap Consortium, The REDCap
+     for clinical research and the EMR EDC interface, Invest. Ophthalmol. Vis. Sci. 48               consortium: Building an international community of software platform partners,
+     (2007) 4383–4389.                                                                               J. Biomed. Inform. 95 (2019), 103208.
+ [2] R. Marks, H. Bristol, M. Conlon, C.J. Pepine, Enhancing clinical trials on the             [16] D. Bender, K. Sartipi, HL7 FHIR: An Agile and RESTful approach to healthcare
+     internet: lessons from INVEST, Clin. Cardiol. 24 (2001) V17–23.                                 information exchange, in, in: Proceedings of the 26th IEEE International
+ [3] E.L. Eisenstein, R. Collins, B.S. Cracknell, O. Podesta, E.D. Reid, P. Sandercock,              Symposium on Computer-Based Medical Systems, 2013, pp. 326–331.
+     Y. Shakhov, M.L. Terrin, M.A. Sellers, R.M. Califf, C.B. Granger, R. Diaz, Sensible        [17] K.B. Wagholikar, J.C. Mandel, J.G. Klann, N. Wattanasin, M. Mendis, C.G. Chute, K.
+     approaches for reducing clinical trial costs, Clin. Trials. 5 (2008) 75–84.                     D. Mandl, S.N. Murphy, SMART-on-FHIR implemented over i2b2, J. Am. Med.
+ [4] J.A. Welker, Implementation of electronic data capture systems: barriers and                    Inform. Assoc. 24 (2017) 398–402.
+     solutions, Contemp. Clin. Trials. 28 (2007) 329–336.                                       [18] T.R. Campion Jr, E.T. Sholle, M.A. Davila Jr, Generalizable Middleware to Support
+ [5] J. Adler-Milstein, A.K. Jha, HITECH Act Drove Large Gains In Hospital Electronic                Use of REDCap Dynamic Data Pull for Integrating Clinical and Research Data,
+     Health Record Adoption, Health Aff. 36 (2017) 1416–1422.                                        AMIA Jt Summits Transl Sci Proc. 2017 (2017) 76–81.
+ [6] 21st Century Cures Act, n.d. https://www.congress.gov/114/plaws/publ255/                   [19] Office for Human Research Protections (OHRP), 45 CFR 46, (2016). https://www.
+     PLAW-114publ255.pdf.                                                                            hhs.gov/ohrp/regulations-and-policy/regulations/45-cfr-46/index.html (accessed
+ [7] Center for Drug Evaluation, Research, Use of Electronic Health Record Data in                   April 14, 2021).
+     Clinical Investigations, (n.d.). https://www.fda.gov/regulatory-information/               [20] 10 largest HIPAA settlement fines, (n.d.). https://www.beckershospitalreview.
+     search-fda-guidance-documents/use-electronic-health-record-data-clinical-                       com/healthcare-information-technology/10-largest-hipaa-settlement-fines.html
+     investigations-guidance-industry (accessed November 18, 2020).                                  (accessed November 12, 2020).
+ [8] R.E. Sherman, S.A. Anderson, G.J. Dal Pan, G.W. Gray, T. Gross, N.L. Hunter,               [21] T.T. Helmer, A.A. Lewis, M. McEver, F. Delacqua, C.L. Pastern, N. Kennedy, T.
+     L. LaVange, D. Marinac-Dabic, P.W. Marks, M.A. Robb, J. Shuren, R. Temple,                      L. Edwards, B.O. Woodward, P.A. Harris, Creating and implementing a COVID-19
+     J. Woodcock, L.Q. Yue, R.M. Califf, Real-World Evidence - What Is It and What Can               recruitment Data Mart, J. Biomed. Inform. 117 (2021), 103765.
+     It Tell Us? N. Engl. J. Med. 375 (2016) 2293–2297.                                         [22] REDCap Community, (n.d.). https://community.projectredcap.org/users/login.
+ [9] A.H. Nordo, H.P. Levaux, L.B. Becnel, J. Galvez, P. Rao, K. Stem, E. Prakash, R.                html (accessed December 22, 2020).
+     D. Kush, Use of EHRs data for clinical research: Historical progress and current           [23] K.B. Johnson, N.R. Patel, Biomedical Informatics and Health Information
+     applications, Learn Health Syst. 3 (2019), e10076.                                              Technology: a Critical, Pragmatic Collaboration for Clinical Transformation,
+[10] R.D. Kush, A.H. Nordo, Data Sharing and Reuse of Health Data for Research, in: R.               J. Gen. Intern. Med. 36 (2021) 530–532.
+     L. Richesson, J.E. Andrews (Eds.), Clinical Research Informatics, Springer                 [24] FHIR Bulk Data Access (Flat FHIR), (n.d.). https://hl7.org/fhir/uv/bulkdata/
+     International Publishing, Cham, 2019, pp. 379–401.                                              (accessed December 22, 2020).
+[11] I. Danciu, J.D. Cowan, M. Basford, X. Wang, A. Saip, S. Osgood, J. Shirey-Rice,
+     J. Kirby, P.A. Harris, Secondary use of clinical data: the Vanderbilt approach,
+     J. Biomed. Inform. 52 (2014) 28–35.
+
+
+
+
+                                                                                           13
+

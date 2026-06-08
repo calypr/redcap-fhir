@@ -15,6 +15,8 @@ class FHIRClient:
             'Content-Type': 'application/fhir+json',
             'Accept': 'application/fhir+json'
         }
+        if Config.FHIR_ACCESS_TOKEN:
+            self.headers['Authorization'] = f"Bearer {Config.FHIR_ACCESS_TOKEN}"
     
     def get_resource(self, resource_type: str, resource_id: str) -> Optional[Dict[str, Any]]:
         """

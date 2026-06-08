@@ -29,6 +29,7 @@ services:
       dockerfile: Dockerfile
     container_name: redcap_app
     environment:
+      FHIR_API_URL: http://fhir-api:5000
       MYSQL_HOST: mysql
       MYSQL_DATABASE: ${MYSQL_DATABASE:-redcap}
       MYSQL_USER: ${MYSQL_USER:-redcap}
@@ -37,7 +38,7 @@ services:
       - "8080:80"
       - "8443:443"
     volumes:
-      - redcap_data:/var/www/redcap
+      - ./redcap:/var/www/redcap
       - ./docker/apache.conf:/etc/apache2/sites-available/redcap.conf
     depends_on:
       mysql:
@@ -73,8 +74,6 @@ services:
 
 volumes:
   mysql_data:
-    driver: local
-  redcap_data:
     driver: local
 
 networks:
