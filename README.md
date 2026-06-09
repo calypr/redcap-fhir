@@ -6,6 +6,8 @@ A Docker-based REDCap instance configured for CRUD operations on FHIR data from 
 
 This project launches a REDCap instance in a Docker container with integrated FHIR capabilities, enabling seamless Create, Read, Update, and Delete operations on FHIR resources.
 
+<img width="1149" height="800" alt="image" src="https://github.com/user-attachments/assets/21346d18-fd7d-473b-9fbd-7fd2e105a750" />
+
 ### FHIR Configuration
 - **FHIR Base URL**: https://google-fhir.fhir-aggregator.org/
 - **FHIR Schema (R5)**: https://hl7.org/fhir/R5
